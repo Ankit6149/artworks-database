@@ -104,7 +104,7 @@ function App() {
 
   const handleSelectN = () => {
     const inputValue = selectCountInput === '' ? 0 : Number(selectCountInput)
-    const normalized = selectNRowsLogically(
+    selectNRowsLogically(
       inputValue,
       totalRecords,
       currentPage,
