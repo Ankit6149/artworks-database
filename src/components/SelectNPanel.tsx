@@ -19,6 +19,7 @@ export function SelectNPanel({
   onClose,
 }: SelectNPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -39,8 +40,8 @@ export function SelectNPanel({
       document.addEventListener("click", handleDocumentClick);
       document.addEventListener("keydown", handleEsc);
 
-      // store cleanup on ref so we can remove later
-      (panelRef as any)._cleanup = () => {
+      // store cleanup in a typed ref so we can remove later
+      cleanupRef.current = () => {
         document.removeEventListener("click", handleDocumentClick);
         document.removeEventListener("keydown", handleEsc);
       };
@@ -48,8 +49,10 @@ export function SelectNPanel({
 
     return () => {
       clearTimeout(t);
-      const cleanup = (panelRef as any)._cleanup as (() => void) | undefined;
-      if (typeof cleanup === "function") cleanup();
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
     };
   }, [isOpen, onClose]);
 
