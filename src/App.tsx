@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Artwork } from "./types/artwork";
 import { useArtworkSelection } from "./hooks/useArtworkSelection";
-import { fetchArtworksPage } from "./services/artworksApi";
+import { useFetchArtworks } from "./hooks/useFetchArtworks";
+import { useSelectNPanel } from "./hooks/useSelectNPanel";
 import {
   HeaderSection,
   SelectionBar,
@@ -13,17 +14,20 @@ import {
 } from "./components";
 import "./App.css";
 
-const DEFAULT_ROWS = 12;
-
 function App() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectCountInput, setSelectCountInput] = useState("");
-  const [isSelectPanelOpen, setIsSelectPanelOpen] = useState(false);
+
+  // Fetch artworks for current page
+  const { artworks, loading, error, totalRecords, rowsPerPage } =
+    useFetchArtworks(currentPage);
+
+  const {
+    isSelectPanelOpen,
+    selectCountInput,
+    setIsSelectPanelOpen,
+    setSelectCountInput,
+    resetPanel,
+  } = useSelectNPanel();
 
   const {
     selectedIds,
@@ -36,47 +40,6 @@ function App() {
     syncLogicalTargetOnPage,
     getSelectedCount,
   } = useArtworkSelection();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadPage = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const result = await fetchArtworksPage(currentPage);
-
-        if (cancelled) {
-          return;
-        }
-
-        setArtworks(result.data);
-        setTotalRecords(result.pagination.total);
-        setRowsPerPage(result.pagination.limit);
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
-
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load artworks.",
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadPage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentPage]);
 
   useEffect(() => {
     if (logicalTargetCount === null || artworks.length === 0) {
@@ -129,8 +92,7 @@ function App() {
       rowsPerPage,
       artworks,
     );
-    setSelectCountInput("");
-    setIsSelectPanelOpen(false);
+    resetPanel();
   };
 
   const handleToggleSelectOnPage = () => {
@@ -156,9 +118,7 @@ function App() {
         <div className="artworks-table-wrap">
           <TableToolbar
             isSelectPanelOpen={isSelectPanelOpen}
-            onToggleSelectPanel={() =>
-              setIsSelectPanelOpen((previous) => !previous)
-            }
+            onToggleSelectPanel={() => setIsSelectPanelOpen(!isSelectPanelOpen)}
             isCurrentPageFullySelected={isCurrentPageFullySelected}
             onToggleSelectPage={handleToggleSelectOnPage}
             isSelectPageDisabled={artworks.length === 0}
