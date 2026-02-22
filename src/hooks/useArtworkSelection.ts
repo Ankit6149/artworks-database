@@ -1,36 +1,14 @@
 import { useCallback, useState } from 'react'
 import type { Artwork } from '../types/artwork'
-
-interface UseArtworkSelectionResult {
-  selectedIds: Set<number>
-  deselectedIds: Set<number>
-  isSelectAllActive: boolean
-  logicalTargetCount: number | null
-  getPageSelection: (rows: Artwork[], currentPage: number, pageSize: number) => Artwork[]
-  updateSelectionForPage: (
-    pageRows: Artwork[],
-    selectedRows: Artwork[],
-    currentPage: number,
-    pageSize: number,
-  ) => void
-  clearSelection: () => void
-  selectNRowsLogically: (count: number, totalRecords: number) => number
-  getSelectedCount: (totalRecords: number) => number
-}
-
-function clampCount(count: number, totalRecords: number): number {
-  if (!Number.isFinite(count)) {
-    return 0
-  }
-
-  const normalized = Math.floor(count)
-
-  return Math.max(0, Math.min(normalized, totalRecords))
-}
-
-function getAbsolutePosition(currentPage: number, pageSize: number, rowIndex: number): number {
-  return (currentPage - 1) * pageSize + rowIndex + 1
-}
+import type { UseArtworkSelectionResult } from './artworkSelection/types'
+import { clampCount } from './artworkSelection/utils'
+import {
+  getPageSelectionForState,
+  getSelectedCountForState,
+  updateDeselectedForSelectAllMode,
+  updateLogicalSelectionForPage,
+  updateSelectedForExplicitMode,
+} from './artworkSelection/selectionLogic'
 
 export function useArtworkSelection(): UseArtworkSelectionResult {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -40,24 +18,11 @@ export function useArtworkSelection(): UseArtworkSelectionResult {
 
   const getPageSelection = useCallback(
     function getPageSelectionCallback(rows: Artwork[], currentPage: number, pageSize: number): Artwork[] {
-      return rows.filter((row, index) => {
-        if (logicalTargetCount !== null) {
-          const absolutePosition = getAbsolutePosition(currentPage, pageSize, index)
-          const isInsideLogicalTarget = absolutePosition <= logicalTargetCount
-
-          if (isInsideLogicalTarget) {
-            return !deselectedIds.has(row.id)
-          }
-
-          return selectedIds.has(row.id)
-        }
-
-        if (isSelectAllActive) {
-          return !deselectedIds.has(row.id)
-        }
-
-        return selectedIds.has(row.id)
-      })
+      return getPageSelectionForState(
+        rows,
+        { selectedIds, deselectedIds, isSelectAllActive, logicalTargetCount },
+        { currentPage, pageSize },
+      )
     },
     [deselectedIds, isSelectAllActive, logicalTargetCount, selectedIds],
   )
@@ -69,34 +34,15 @@ export function useArtworkSelection(): UseArtworkSelectionResult {
       currentPage: number,
       pageSize: number,
     ) {
-      const pageIds = new Set(pageRows.map((row) => row.id))
-      const selectedOnPageIds = new Set(selectedRows.map((row) => row.id))
-
       if (logicalTargetCount !== null) {
-        const nextSelected = new Set(selectedIds)
-        const nextDeselected = new Set(deselectedIds)
-
-        pageRows.forEach((row, index) => {
-          const absolutePosition = getAbsolutePosition(currentPage, pageSize, index)
-          const isInsideLogicalTarget = absolutePosition <= logicalTargetCount
-          const isSelectedNow = selectedOnPageIds.has(row.id)
-
-          if (isInsideLogicalTarget) {
-            if (isSelectedNow) {
-              nextDeselected.delete(row.id)
-            } else {
-              nextDeselected.add(row.id)
-            }
-            nextSelected.delete(row.id)
-            return
-          }
-
-          if (isSelectedNow) {
-            nextSelected.add(row.id)
-          } else {
-            nextSelected.delete(row.id)
-          }
-          nextDeselected.delete(row.id)
+        const { nextSelected, nextDeselected } = updateLogicalSelectionForPage({
+          pageRows,
+          selectedRows,
+          currentPage,
+          pageSize,
+          logicalTargetCount,
+          selectedIds,
+          deselectedIds,
         })
 
         setSelectedIds(nextSelected)
@@ -108,34 +54,14 @@ export function useArtworkSelection(): UseArtworkSelectionResult {
 
       if (isSelectAllActive) {
         setDeselectedIds((previous) => {
-          const next = new Set(previous)
-
-          pageIds.forEach((id) => {
-            if (selectedOnPageIds.has(id)) {
-              next.delete(id)
-            } else {
-              next.add(id)
-            }
-          })
-
-          return next
+          return updateDeselectedForSelectAllMode(pageRows, selectedRows, previous)
         })
 
         return
       }
 
       setSelectedIds((previous) => {
-        const next = new Set(previous)
-
-        pageIds.forEach((id) => {
-          if (selectedOnPageIds.has(id)) {
-            next.add(id)
-          } else {
-            next.delete(id)
-          }
-        })
-
-        return next
+        return updateSelectedForExplicitMode(pageRows, selectedRows, previous)
       })
     },
     [deselectedIds, isSelectAllActive, logicalTargetCount, selectedIds],
@@ -177,17 +103,14 @@ export function useArtworkSelection(): UseArtworkSelectionResult {
 
   const getSelectedCount = useCallback(
     function getSelectedCountCallback(totalRecords: number): number {
-      if (logicalTargetCount !== null) {
-        return clampCount(logicalTargetCount + selectedIds.size - deselectedIds.size, totalRecords)
-      }
-
-      if (isSelectAllActive) {
-        return Math.max(0, totalRecords - deselectedIds.size)
-      }
-
-      return selectedIds.size
+      return getSelectedCountForState(totalRecords, {
+        selectedIds,
+        deselectedIds,
+        isSelectAllActive,
+        logicalTargetCount,
+      })
     },
-    [deselectedIds.size, isSelectAllActive, logicalTargetCount, selectedIds.size],
+    [deselectedIds, isSelectAllActive, logicalTargetCount, selectedIds],
   )
 
   return {
