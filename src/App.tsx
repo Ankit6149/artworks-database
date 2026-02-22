@@ -130,6 +130,7 @@ function App() {
             totalRecords={totalRecords}
             onInputChange={setSelectCountInput}
             onSelectClick={handleSelectN}
+            onClose={() => setIsSelectPanelOpen(false)}
           />
 
           <ArtworksTable
