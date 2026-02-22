@@ -12,13 +12,13 @@ export function usePaginationLogic(
 ): UsePaginationLogicReturn {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = useMemo(() => {
+  const totalPages = useMemo(function computeTotalPages() {
     if (rowsPerPage === 0 || totalRecords === 0) return 1;
     return Math.max(1, Math.ceil(totalRecords / rowsPerPage));
   }, [totalRecords, rowsPerPage]);
 
   const handlePageChange = useCallback(
-    (nextPage: number) => {
+    function handlePageChangeCallback(nextPage: number) {
       if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage) {
         return;
       }

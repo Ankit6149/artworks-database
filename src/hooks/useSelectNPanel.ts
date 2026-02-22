@@ -12,10 +12,10 @@ export function useSelectNPanel(): UseSelectNPanelReturn {
   const [isSelectPanelOpen, setIsSelectPanelOpen] = useState(false);
   const [selectCountInput, setSelectCountInput] = useState("");
 
-  const resetPanel = () => {
+  function resetPanel(): void {
     setSelectCountInput("");
     setIsSelectPanelOpen(false);
-  };
+  }
 
   return {
     isSelectPanelOpen,

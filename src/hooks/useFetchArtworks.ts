@@ -17,10 +17,10 @@ export function useFetchArtworks(currentPage: number): UseFetchArtworksReturn {
   const [totalRecords, setTotalRecords] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
 
-  useEffect(() => {
+  useEffect(function loadCurrentPageEffect() {
     let cancelled = false;
 
-    const loadPage = async () => {
+    async function loadPage() {
       setLoading(true);
       setError(null);
 
@@ -49,11 +49,11 @@ export function useFetchArtworks(currentPage: number): UseFetchArtworksReturn {
           setLoading(false);
         }
       }
-    };
+    }
 
     void loadPage();
 
-    return () => {
+    return function cleanupLoadCurrentPageEffect() {
       cancelled = true;
     };
   }, [currentPage]);
