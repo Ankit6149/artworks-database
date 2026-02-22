@@ -1,5 +1,6 @@
 import type { Artwork } from "../types/artwork";
 import { renderCellText } from "../utils/formatters";
+import { FiChevronDown } from "react-icons/fi";
 
 interface ArtworksTableProps {
   artworks: Artwork[];
@@ -7,6 +8,8 @@ interface ArtworksTableProps {
   isCurrentPageFullySelected: boolean;
   pageSelection: Artwork[];
   onToggleSelectPage: () => void;
+  isSelectPanelOpen: boolean;
+  onToggleSelectPanel: () => void;
   onSelectionChange: (nextSelection: Artwork[]) => void;
 }
 
@@ -16,6 +19,8 @@ export function ArtworksTable({
   isCurrentPageFullySelected,
   pageSelection,
   onToggleSelectPage,
+  isSelectPanelOpen,
+  onToggleSelectPanel,
   onSelectionChange,
 }: ArtworksTableProps) {
   const pageSelectionIds = new Set(pageSelection.map((row) => row.id));
@@ -25,14 +30,25 @@ export function ArtworksTable({
       <table className="artworks-table" aria-label="Artworks data table">
         <thead>
           <tr>
-            <th className="checkbox-column">
-              <input
-                type="checkbox"
-                aria-label="Select all rows on this page"
-                checked={isCurrentPageFullySelected}
-                onChange={onToggleSelectPage}
-                disabled={artworks.length === 0}
-              />
+            <th className="checkbox-column checkbox-column-header">
+              <div className="header-select-controls">
+                <input
+                  type="checkbox"
+                  aria-label="Select all rows on this page"
+                  checked={isCurrentPageFullySelected}
+                  onChange={onToggleSelectPage}
+                  disabled={artworks.length === 0}
+                />
+                <button
+                  type="button"
+                  className="selection-header-trigger selection-header-trigger-inline"
+                  aria-expanded={isSelectPanelOpen}
+                  aria-controls="select-n-panel"
+                  onClick={onToggleSelectPanel}
+                >
+                  <FiChevronDown size={14} />
+                </button>
+              </div>
             </th>
             <th>Title</th>
             <th>Place Of Origin</th>

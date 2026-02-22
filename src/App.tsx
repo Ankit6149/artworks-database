@@ -6,7 +6,6 @@ import { useSelectNPanel } from "./hooks/useSelectNPanel";
 import {
   HeaderSection,
   SelectionBar,
-  TableToolbar,
   SelectNPanel,
   ArtworksTable,
   TableFooter,
@@ -89,14 +88,6 @@ function App() {
         <ErrorBanner error={error} />
 
         <div className="artworks-table-wrap">
-          <TableToolbar
-            isSelectPanelOpen={isSelectPanelOpen}
-            onToggleSelectPanel={() => setIsSelectPanelOpen(!isSelectPanelOpen)}
-            isCurrentPageFullySelected={isCurrentPageFullySelected}
-            onToggleSelectPage={handleToggleSelectOnPage}
-            isSelectPageDisabled={artworks.length === 0}
-          />
-
           <SelectNPanel
             isOpen={isSelectPanelOpen}
             inputValue={selectCountInput}
@@ -112,6 +103,8 @@ function App() {
             isCurrentPageFullySelected={isCurrentPageFullySelected}
             pageSelection={pageSelection}
             onToggleSelectPage={handleToggleSelectOnPage}
+            isSelectPanelOpen={isSelectPanelOpen}
+            onToggleSelectPanel={() => setIsSelectPanelOpen(!isSelectPanelOpen)}
             onSelectionChange={handleSelectionChange}
           />
 
