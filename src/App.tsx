@@ -1,7 +1,4 @@
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { Column } from 'primereact/column'
-import { DataTable } from 'primereact/datatable'
-import { OverlayPanel } from 'primereact/overlaypanel'
+import { useEffect, useMemo, useState } from 'react'
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
 import type { Artwork } from './types/artwork'
 import { useArtworkSelection } from './hooks/useArtworkSelection'
@@ -22,7 +19,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectCountInput, setSelectCountInput] = useState('')
-  const overlayRef = useRef<OverlayPanel>(null)
+  const [isSelectPanelOpen, setIsSelectPanelOpen] = useState(false)
 
   const {
     selectedIds,
@@ -82,23 +79,21 @@ function App() {
   }, [artworks, currentPage, logicalTargetCount, rowsPerPage, syncLogicalTargetOnPage])
 
   const pageSelection = useMemo(() => getPageSelection(artworks), [artworks, getPageSelection])
+  const pageSelectionIds = useMemo(() => new Set(pageSelection.map((row) => row.id)), [pageSelection])
   const selectedCount = getSelectedCount(totalRecords)
   const isClearDisabled = !isSelectAllActive && selectedIds.size === 0
+  const isCurrentPageFullySelected = artworks.length > 0 && pageSelection.length === artworks.length
+  const totalPages = rowsPerPage === 0 ? 1 : Math.max(1, Math.ceil(totalRecords / rowsPerPage))
 
-  const handlePageChange = (event: any) => {
-    if (typeof event.page !== 'number') {
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage) {
       return
     }
 
-    const nextPage = event.page + 1
-
-    if (nextPage !== currentPage) {
-      setCurrentPage(nextPage)
-    }
+    setCurrentPage(nextPage)
   }
 
-  const handleSelectionChange = (event: any) => {
-    const nextSelection = Array.isArray(event.value) ? (event.value as Artwork[]) : []
+  const handleSelectionChange = (nextSelection: Artwork[]) => {
     updateSelectionForPage(artworks, nextSelection)
   }
 
@@ -112,18 +107,22 @@ function App() {
       artworks,
     )
     setSelectCountInput('')
-    overlayRef.current?.hide()
+    setIsSelectPanelOpen(false)
   }
 
-  const handleSelectionHeaderMenuToggle = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    overlayRef.current?.toggle(event)
+  const handleToggleSelectOnPage = () => {
+    handleSelectionChange(isCurrentPageFullySelected ? [] : artworks)
   }
 
   const formatCount = (value: number): string => numberFormatter.format(value)
   const firstEntry = totalRecords === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
   const lastEntry = Math.min(currentPage * rowsPerPage, totalRecords)
+  const startPage = Math.max(1, currentPage - 2)
+  const endPage = Math.min(totalPages, startPage + 4)
+  const visiblePages = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, index) => startPage + index,
+  )
 
   return (
     <main className="min-h-screen bg-slate-100 p-2 sm:p-4 md:p-6">
@@ -164,111 +163,157 @@ function App() {
           </div>
         )}
 
-        <DataTable
-          value={artworks}
-          dataKey="id"
-          selectionMode="multiple"
-          selection={pageSelection}
-          onSelectionChange={handleSelectionChange}
-          paginator
-          lazy
-          first={(currentPage - 1) * rowsPerPage}
-          rows={rowsPerPage}
-          totalRecords={totalRecords}
-          onPage={handlePageChange}
-          loading={loading}
-          selectionPageOnly
-          className="artworks-table"
-          tableStyle={{ minWidth: '100%' }}
-          responsiveLayout="scroll"
-          paginatorTemplate="PrevPageLink PageLinks NextPageLink"
-          paginatorLeft={
+        <div className="artworks-table-wrap">
+          <div className="artworks-table-toolbar">
+            <button
+              type="button"
+              className="selection-header-trigger"
+              aria-expanded={isSelectPanelOpen}
+              aria-controls="select-n-panel"
+              onClick={() => setIsSelectPanelOpen((previous) => !previous)}
+            >
+              <FiChevronDown size={16} />
+            </button>
+            <button
+              type="button"
+              className="action-btn"
+              onClick={handleToggleSelectOnPage}
+              disabled={artworks.length === 0}
+            >
+              {isCurrentPageFullySelected ? 'Unselect page' : 'Select page'}
+            </button>
+          </div>
+
+          {isSelectPanelOpen && (
+            <div id="select-n-panel" className="select-n-panel">
+              <label htmlFor="select-n-input" className="text-sm font-semibold text-slate-800">
+                Select Multiple Rows
+              </label>
+              <p className="text-xs text-slate-500">Enter number of rows to select across all pages</p>
+              <div className="select-n-controls">
+                <input
+                  id="select-n-input"
+                  type="number"
+                  min={0}
+                  max={totalRecords}
+                  value={selectCountInput}
+                  onChange={(event) => setSelectCountInput(event.target.value)}
+                  placeholder="e.g., 20"
+                  className="select-n-input"
+                />
+                <button type="button" className="select-n-btn" onClick={handleSelectN}>
+                  <FiCheck size={14} />
+                  <span>Select</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="artworks-table-scroll">
+            <table className="artworks-table" aria-label="Artworks data table">
+              <thead>
+                <tr>
+                  <th className="checkbox-column">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all rows on this page"
+                      checked={isCurrentPageFullySelected}
+                      onChange={handleToggleSelectOnPage}
+                      disabled={artworks.length === 0}
+                    />
+                  </th>
+                  <th>Title</th>
+                  <th>Place Of Origin</th>
+                  <th>Artist Display</th>
+                  <th>Inscriptions</th>
+                  <th>Date Start</th>
+                  <th>Date End</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={7} className="status-cell">
+                      Loading artworks...
+                    </td>
+                  </tr>
+                )}
+                {!loading && artworks.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="status-cell">
+                      No artworks found.
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  artworks.map((row) => {
+                    const rowSelected = pageSelectionIds.has(row.id)
+
+                    return (
+                      <tr key={row.id} className={rowSelected ? 'row-selected' : ''}>
+                        <td className="checkbox-column">
+                          <input
+                            type="checkbox"
+                            aria-label={`Select row ${row.id}`}
+                            checked={rowSelected}
+                            onChange={() => {
+                              const nextSelection = rowSelected
+                                ? pageSelection.filter((selectedRow) => selectedRow.id !== row.id)
+                                : [...pageSelection, row]
+                              handleSelectionChange(nextSelection)
+                            }}
+                          />
+                        </td>
+                        <td>{renderCellText(row.title)}</td>
+                        <td>{renderCellText(row.place_of_origin)}</td>
+                        <td>{renderCellText(row.artist_display)}</td>
+                        <td>{renderCellText(row.inscriptions)}</td>
+                        <td>{renderCellText(row.date_start)}</td>
+                        <td>{renderCellText(row.date_end)}</td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="table-footer">
             <span className="text-sm text-slate-600">
-              Showing <strong>{formatCount(firstEntry)}</strong> to{' '}
-              <strong>{formatCount(lastEntry)}</strong> of{' '}
-              <strong>{formatCount(totalRecords)}</strong> entries
+              Showing <strong>{formatCount(firstEntry)}</strong> to <strong>{formatCount(lastEntry)}</strong>{' '}
+              of <strong>{formatCount(totalRecords)}</strong> entries
             </span>
-          }
-          stripedRows
-          emptyMessage="No artworks found."
-        >
-          <Column
-            selectionMode="multiple"
-            headerStyle={{ width: '3.5rem' }}
-            bodyStyle={{ padding: '0.64rem 0.4rem', textAlign: 'center' }}
-            headerClassName="selection-column-header"
-            header={
+
+            <div className="pagination-controls">
               <button
                 type="button"
-                className="selection-header-trigger"
-                aria-label="Select multiple rows"
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-                onClick={handleSelectionHeaderMenuToggle}
+                className="page-btn"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || loading}
               >
-                <FiChevronDown size={16} />
+                Prev
               </button>
-            }
-          />
-          <Column field="title" header="Title" body={(row: Artwork) => renderCellText(row.title)} style={{ width: '18%' }} />
-          <Column
-            field="place_of_origin"
-            header="Place Of Origin"
-            body={(row: Artwork) => renderCellText(row.place_of_origin)}
-            style={{ width: '15%' }}
-          />
-          <Column
-            field="artist_display"
-            header="Artist Display"
-            body={(row: Artwork) => renderCellText(row.artist_display)}
-            style={{ width: '20%' }}
-          />
-          <Column
-            field="inscriptions"
-            header="Inscriptions"
-            body={(row: Artwork) => renderCellText(row.inscriptions)}
-            style={{ width: '22%' }}
-          />
-          <Column
-            field="date_start"
-            header="Date Start"
-            body={(row: Artwork) => renderCellText(row.date_start)}
-            style={{ width: '12%' }}
-          />
-          <Column 
-            field="date_end" 
-            header="Date End" 
-            body={(row: Artwork) => renderCellText(row.date_end)} 
-            style={{ width: '13%' }}
-          />
-        </DataTable>
-
-        <OverlayPanel ref={overlayRef} className="select-n-overlay">
-          <div className="flex w-72 sm:w-80 flex-col gap-2 sm:gap-3">
-            <label htmlFor="select-n-input" className="text-sm font-semibold text-slate-800">
-              Select Multiple Rows
-            </label>
-            <p className="text-xs text-slate-500">Enter number of rows to select across all pages</p>
-            <div className="flex flex-col xs:flex-row xs:items-center gap-2">
-              <input
-                id="select-n-input"
-                type="number"
-                min={0}
-                max={totalRecords}
-                value={selectCountInput}
-                onChange={(event) => setSelectCountInput(event.target.value)}
-                placeholder="e.g., 20"
-                className="h-10 flex-1 rounded-lg border border-slate-300 px-3 text-sm font-mono tabular-nums outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
-              <button type="button" className="select-n-btn" onClick={handleSelectN}>
-                <FiCheck size={14} />
-                <span>Select</span>
+              {visiblePages.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={`page-btn ${pageNumber === currentPage ? 'is-active' : ''}`}
+                  onClick={() => handlePageChange(pageNumber)}
+                  disabled={loading}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="page-btn"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages || loading}
+              >
+                Next
               </button>
             </div>
           </div>
-        </OverlayPanel>
+        </div>
       </section>
     </main>
   )
