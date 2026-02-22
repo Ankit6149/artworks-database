@@ -1,4 +1,5 @@
-import { FiCheck, FiX } from "react-icons/fi";
+import { FiCheck } from "react-icons/fi";
+import { useEffect, useRef } from "react";
 
 interface SelectNPanelProps {
   isOpen: boolean;
@@ -17,44 +18,56 @@ export function SelectNPanel({
   onSelectClick,
   onClose,
 }: SelectNPanelProps) {
-  if (!isOpen) {
-    return null;
-  }
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose();
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleDocumentClick(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (panelRef.current && target && !panelRef.current.contains(target)) {
+        onClose();
+      }
     }
-  };
 
-  const handleSelectClick = () => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+
+    document.addEventListener("click", handleDocumentClick);
+    document.addEventListener("keydown", handleEsc);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleSelect = () => {
     onSelectClick();
     onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-      onClick={handleBackdropClick}
+      className="select-n-floating"
+      ref={panelRef}
+      role="dialog"
+      aria-modal="false"
     >
-      <div className="select-n-dialog">
-        <div className="select-n-dialog-header">
-          <h2 className="select-n-dialog-title">Select Multiple Rows</h2>
-          <button
-            type="button"
-            className="select-n-dialog-close"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
-            <FiX size={20} />
-          </button>
+      <div className="select-n-floating-inner">
+        <div className="select-n-floating-header">
+          <span className="text-sm font-semibold text-slate-800">
+            Select Multiple Rows
+          </span>
         </div>
 
         <div className="select-n-dialog-content">
-          <p className="text-sm text-slate-600 mb-4">
+          <p className="text-sm text-slate-600 mb-2">
             Enter the number of rows to select across all pages
           </p>
-
           <div className="select-n-controls">
             <input
               id="select-n-input"
@@ -81,7 +94,7 @@ export function SelectNPanel({
           <button
             type="button"
             className="dialog-btn dialog-btn-primary"
-            onClick={handleSelectClick}
+            onClick={handleSelect}
           >
             <FiCheck size={14} />
             <span>Select</span>

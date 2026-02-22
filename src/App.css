@@ -57,6 +57,7 @@
   overflow: hidden;
   background: #ffffff;
   box-shadow: 0 7px 16px -14px rgba(15, 23, 42, 0.35);
+  position: relative;
 }
 
 .artworks-table-toolbar {
@@ -247,6 +248,30 @@
 
 .dialog-btn-primary:active {
   background: #1a348a;
+}
+
+/* Floating dropdown panel (anchored near toolbar icon) */
+.select-n-floating {
+  position: absolute;
+  top: 3.2rem;
+  left: 0.6rem;
+  z-index: 40;
+  width: 320px;
+  max-width: calc(100% - 1.2rem);
+  pointer-events: auto;
+}
+
+.select-n-floating-inner {
+  background: #ffffff;
+  border-radius: 0.6rem;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.08);
+  overflow: hidden;
+  border: 1px solid #e6eef8;
+}
+
+.select-n-floating-header {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #eef2f7;
 }
 
 .artworks-table-scroll {
