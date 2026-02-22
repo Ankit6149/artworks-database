@@ -22,24 +22,34 @@ export function SelectNPanel({
 
   useEffect(() => {
     if (!isOpen) return;
-
-    function handleDocumentClick(e: MouseEvent) {
-      const target = e.target as Node | null;
-      if (panelRef.current && target && !panelRef.current.contains(target)) {
-        onClose();
+    // Defer attaching document listeners so the click that opens the panel
+    // doesn't immediately propagate to the document handler and close it.
+    const t = window.setTimeout(() => {
+      function handleDocumentClick(e: MouseEvent) {
+        const target = e.target as Node | null;
+        if (panelRef.current && target && !panelRef.current.contains(target)) {
+          onClose();
+        }
       }
-    }
 
-    function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
+      function handleEsc(e: KeyboardEvent) {
+        if (e.key === "Escape") onClose();
+      }
 
-    document.addEventListener("click", handleDocumentClick);
-    document.addEventListener("keydown", handleEsc);
+      document.addEventListener("click", handleDocumentClick);
+      document.addEventListener("keydown", handleEsc);
+
+      // store cleanup on ref so we can remove later
+      (panelRef as any)._cleanup = () => {
+        document.removeEventListener("click", handleDocumentClick);
+        document.removeEventListener("keydown", handleEsc);
+      };
+    }, 0);
 
     return () => {
-      document.removeEventListener("click", handleDocumentClick);
-      document.removeEventListener("keydown", handleEsc);
+      clearTimeout(t);
+      const cleanup = (panelRef as any)._cleanup as (() => void) | undefined;
+      if (typeof cleanup === "function") cleanup();
     };
   }, [isOpen, onClose]);
 
