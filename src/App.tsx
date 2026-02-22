@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Artwork } from "./types/artwork";
 import { useArtworkSelection } from "./hooks/useArtworkSelection";
 import { useFetchArtworks } from "./hooks/useFetchArtworks";
@@ -32,37 +32,16 @@ function App() {
   const {
     selectedIds,
     isSelectAllActive,
-    logicalTargetCount,
     getPageSelection,
     updateSelectionForPage,
     clearSelection,
     selectNRowsLogically,
-    syncLogicalTargetOnPage,
     getSelectedCount,
   } = useArtworkSelection();
 
-  useEffect(() => {
-    if (logicalTargetCount === null || artworks.length === 0) {
-      return;
-    }
-
-    syncLogicalTargetOnPage(
-      logicalTargetCount,
-      currentPage,
-      rowsPerPage,
-      artworks,
-    );
-  }, [
-    artworks,
-    currentPage,
-    logicalTargetCount,
-    rowsPerPage,
-    syncLogicalTargetOnPage,
-  ]);
-
   const pageSelection = useMemo(
-    () => getPageSelection(artworks),
-    [artworks, getPageSelection],
+    () => getPageSelection(artworks, currentPage, rowsPerPage),
+    [artworks, currentPage, getPageSelection, rowsPerPage],
   );
   const selectedCount = getSelectedCount(totalRecords);
   const isClearDisabled = !isSelectAllActive && selectedIds.size === 0;
@@ -80,18 +59,12 @@ function App() {
   };
 
   const handleSelectionChange = (nextSelection: Artwork[]) => {
-    updateSelectionForPage(artworks, nextSelection);
+    updateSelectionForPage(artworks, nextSelection, currentPage, rowsPerPage);
   };
 
   const handleSelectN = () => {
     const inputValue = selectCountInput === "" ? 0 : Number(selectCountInput);
-    selectNRowsLogically(
-      inputValue,
-      totalRecords,
-      currentPage,
-      rowsPerPage,
-      artworks,
-    );
+    selectNRowsLogically(inputValue, totalRecords);
     resetPanel();
   };
 
