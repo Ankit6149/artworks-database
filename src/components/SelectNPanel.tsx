@@ -21,9 +21,7 @@ export function SelectNPanel({
     return null;
   }
 
-  const handleBackdropClick = (
-    event: React.MouseEvent<HTMLDivElement>,
-  ) => {
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       onClose();
     }
@@ -93,4 +91,3 @@ export function SelectNPanel({
     </div>
   );
 }
-
